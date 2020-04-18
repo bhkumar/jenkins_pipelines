@@ -1,0 +1,21 @@
+pipeline {
+    agent any
+     
+     stages {
+       
+        stage ('Checkout SCM') {
+           steps  {
+               git branch: 'xxxxxxxxxx', credentialsId: 'devops', url: 'https://github.com/devops.git'
+           }
+       }
+        stage ('Copying Dockerfile') {
+            steps {
+                sh 'cp /opt/docker/<location>/src/dockerfile/backend/Dockerfile  /var/lib/jenkins/jobs/jenkins_job_name/workspace/backend'
+                sh 'mv /opt/docker/<location>/src/backend /opt/docker/<location>/src/backend2'
+                sh 'cp -r /var/lib/jenkins/jobs/jenkins_job_name/workspace/backend  /opt/docker/<location>/src/'
+                sh 'docker-compose -f /opt/docker/<location>/docker-compose.yml up -d --build service_name'
+            }
+        }      
+    }
+}
+

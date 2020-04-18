@@ -1,0 +1,15 @@
+pipeline {
+    agent any 
+       
+       stages {
+           
+           stage ('Purging Cache of dev and stage using CF'){
+               steps {
+                    withCredentials([string(credentialsId: 'Auth-Key-CF', variable: 'key')]) { 
+                sh ''' curl -s -X POST "https://api.cloudflare.com/client/v4/zones/3368d23238dxxxxxxxxxyyyyyyy/purge_cache" -H "X-Auth-Email: ${email}" -H "X-Auth-Key: ${key}" -H "Content-Type: application/json" --data '{"purge_everything":true}'| json_reformat
+                ''' 
+                }
+            }           
+        }
+    }
+}

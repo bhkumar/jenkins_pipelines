@@ -1,0 +1,24 @@
+pipeline {
+    agent any
+     
+     stages {
+       
+        stage ('Checkout SCM') {
+           steps  {
+               git branch: '$branch_name', credentialsId: 'devops', url: 'https://github.com/repo_code_url.git'
+           }
+       }
+        stage ('Copying Dockerfile') {
+            steps {
+                    sh ''' 
+                    cp /opt/docker/<location>/src/dockerfile/backend/Dockerfile  /var/lib/jenkins/jobs/jenkins_job_name/workspace/backend 
+                    rm -rf /opt/docker/<location>/src/backend2
+                    mv /opt/docker/<location>/src/backend /opt/docker/<location>/src/backend2
+                    cp -r /var/lib/jenkins/jobs/<jenkins_job_name>/workspace/backend  /opt/docker/<location>/src
+                    docker-compose -f /opt/docker/<location>/docker-compose.yaml stop <service_name>
+                    JENKINS_NODE_COOKIE=ignore docker-compose -f /opt/docker/<location>/docker-compose.yaml up -d --build <service_name>
+                    '''
+            }
+        }
+    }
+}

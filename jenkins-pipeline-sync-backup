@@ -1,0 +1,70 @@
+pipeline {
+    agent any
+    parameters {
+        choice(
+            choices: ['complete-sync-plus-code-deploy' , 'only-db-sync' , 'only-git-pull'],
+            description: 'Select the job wanted to perform on the Backup Server',
+            name: 'REQUESTED_ACTION')
+//        string(name: 'USERNAME', defaultValue: '', description: 'Username of Backup Server')
+        string(name: 'IP', defaultValue: '', description: 'IP of Backup Server')
+    }
+    environment {
+        SSHUSERNAME = "ec2-user"
+        SCRIPTPATH = "/opt/build_tools/scripts"
+     }
+    stages{      
+        stage('Complete sync of backup server from prod server') {
+            when {
+                // Only run if a "complete-sync-plus-code-deploy" is selected
+                expression { params.REQUESTED_ACTION == 'complete-sync-plus-code-deploy' }
+            } 
+            steps{
+                wrap([$class: 'BuildUser']) { script { env.USER_ID = "${BUILD_USER_ID}" } }
+                slackSend channel: '#test-2', color: '#6ECADC', message: "STARTED: Job '${env.JOB_NAME} [complete-sync-plus-code-deploy] [${env.BUILD_NUMBER}] by ${env.USER_ID}' (${env.BUILD_URL})", teamDomain: 'devops', tokenCredentialId: 'jenkins-slack'
+                sshagent (credentials: ['pc']) {
+                  sh "ssh -o StrictHostKeyChecking=no ${SSHUSERNAME}@${params.IP} 'cd ${SCRIPTPATH} && sudo bash complete-sync-plus-code-deploy.sh 2>&1'"
+                }  
+            }
+        }
+        stage('Only database sync of backup server from prod server') {
+            when {
+                // Only run if a "only-db-sync" is selected
+                expression { params.REQUESTED_ACTION == 'only-db-sync' }
+            } 
+            steps{
+                wrap([$class: 'BuildUser']) { script { env.USER_ID = "${BUILD_USER_ID}" } }
+                slackSend channel: '#test-2', color: '#6ECADC', message: "STARTED: Job '${env.JOB_NAME} [only-db-sync] [${env.BUILD_NUMBER}] by ${env.USER_ID}' (${env.BUILD_URL})", teamDomain: 'devops', tokenCredentialId: 'jenkins-slack'
+                sshagent (credentials: ['pc']) {
+                  sh "ssh -o StrictHostKeyChecking=no ${SSHUSERNAME}@${params.IP} 'cd ${SCRIPTPATH} && sudo bash only-db-sync.sh 2>&1'"
+                }  
+            }
+        }
+        stage('Only pull latest code on backup server') {
+            when {
+                // Only run if a "only-git-pull" is selected
+                expression { params.REQUESTED_ACTION == 'only-git-pull' }
+            } 
+            steps{
+                wrap([$class: 'BuildUser']) { script { env.USER_ID = "${BUILD_USER_ID}" } }
+                slackSend channel: '#test-2', color: '#6ECADC', message: "STARTED: Job '${env.JOB_NAME} [only-git-pull] [${env.BUILD_NUMBER}] by ${env.USER_ID}' (${env.BUILD_URL})", teamDomain: 'devops', tokenCredentialId: 'jenkins-slack'
+                sshagent (credentials: ['pc']) {
+                  sh "ssh -o StrictHostKeyChecking=no ${SSHUSERNAME}@${params.IP} 'cd ${SCRIPTPATH} && sudo bash only-git-pull.sh 2>&1'"
+                }  
+            }
+        }
+    }
+    post {
+        aborted {
+        echo "Sending message to Slack"
+        slackSend channel: '#test-2', color: '#FFC300', message: "ABORTED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})", teamDomain: 'devops', tokenCredentialId: 'jenkins-slack'
+        }
+        failure {
+        echo "Sending message to Slack"
+        slackSend channel: '#test-2', color: '#E01563', message: "FAILURE: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})", teamDomain: 'devops', tokenCredentialId: 'jenkins-slack'
+        }
+        success {
+        echo "Sending message to Slack"
+        slackSend channel: '#test-2', color: '#3EB991', message: "SUCCESS: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})", teamDomain: 'devops', tokenCredentialId: 'jenkins-slack'
+        }
+    }   
+}

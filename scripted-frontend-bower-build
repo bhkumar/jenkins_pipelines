@@ -1,0 +1,42 @@
+node('master'){
+    
+    // env.NODEJS_HOME = "${tool 'Node 7.x'}"
+    // env.PATH="${env.NODEJS_HOME}/bin:${env.PATH}"
+    
+        stage('Select Parameter'){
+              parameters { choice(name: 'select_branch', choices: ['<xxxxx>', '<yyyyyy>', '<zzzzz>'], description: 'choose a branch to build') }
+            }
+            
+        stage('checkout crm'){ 
+              git branch: '$select_branch', credentialsId: '<xxxxxxx>', url: 'https://github.com/repo_url'
+            }
+        
+        stage('Select Parameter for Module'){
+              parameters { choice(name: 'select_module', choices: ['<xxxxx>', '<yyyyyy>', '<zzzzz>'], description: 'choices for modules to be build') }
+            }
+            
+        stage('Building code'){
+            //  sh "cd <location>/  && "
+            //  sh " bower install"
+            withEnv(["PATH+NodeJS=${tool 'node'}/bin"]){
+             sh ''' echo "PATH = ${PATH}"
+             node -v && npm -v 
+             cd <location>/$select_module && ls && bower install && npm install'''
+            }
+        }
+        
+        stage('removing privious artifacts'){
+            sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'rm -rf /<location>/jenkins-deployed/$select_module/* || true', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+        }
+        
+        stage('Deploying artifacts over SSH'){
+            sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'ls -lia /<location>/jenkins-deployed/$select_module', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: 'jenkins-deployed/$select_module/', remoteDirectorySDF: false, removePrefix: '<location>/$select_module', sourceFiles: '<location>/$select_module/**/*')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+        }
+        
+        stage('deploying build on server'){
+            sh '''JENKINS_NODE_COOKIE=ignore ssh -i /var/jenkins_home/access-ssh.pem ubuntu@<ip> "cd /<location>/jenkins-deployed/$select_module/ && grunt --target=build --module=$select_module --env=staging --force"
+            '''
+        }
+                
+                
+    }

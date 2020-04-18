@@ -1,0 +1,41 @@
+pipeline {
+    agent any
+    parameters {
+        choice(
+            choices: ['build' , 'deploy'],
+            description: 'Please select one parameter',
+            name: 'REQUESTED_ACTION')
+    }
+    environment {
+        STARTSCHEDULARVAR = "False"
+        SEEDDBVAR = "False"
+    }
+    stages{
+        stage('Cloning Repositories') {
+            steps{
+                git branch: 'develop', credentialsId: 'xxxxxxxxx', poll: false, url: 'https://gitlab.com/url_repo_app.git'
+            }
+        }
+        stage('BuildDockerImage') {
+            when {
+                // Only say hello if a "greeting" is requested
+                expression { params.REQUESTED_ACTION == 'build' }
+            }
+            steps{
+                sh '''docker build -t registry.gitlab.com/java-app .
+                      docker push registry.gitlab.com/java-app'''
+            }
+        }
+        stage('Build and Deploy DockerImage') {
+            when {
+                // Only say hello if a "greeting" is requested
+                expression { params.REQUESTED_ACTION == 'deploy' }
+            }
+            steps{
+                sh '''docker build -t registry.gitlab.com/java-app .
+                      docker push registry.gitlab.com/java-app'''
+                     sshPublisher(publishers: [sshPublisherDesc(configName: 'swam-java', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: '''cd /opt/demo/OT-Java-WebApp && docker service update --image registry.gitlab.com/java-app:latest stackdemo_java-app''', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+    }
+}
+}

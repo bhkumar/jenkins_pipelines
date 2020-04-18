@@ -1,0 +1,27 @@
+node('master') {
+
+    stage('checkout scm') {
+        checkout([$class: 'GitSCM', branches: [[name: '$branch_name']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'devops', url: 'https://gitlab.com/repo_url.git']]])
+    }
+
+
+    stage('sonar-scanner analysis') {
+      def sonarqubeScannerHome = tool name: 'sonar-scanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+      withCredentials([string(credentialsId: 'sonar', variable: 'sonarLogin')]) {
+        sh "${sonarqubeScannerHome}/bin/sonar-scanner -X -Dsonar.host.url=http://sonarqube.com -Dsonar.login=${sonarLogin} -Dsonar.projectName=${env.JOB_NAME} -Dsonar.projectVersion=${env.BUILD_NUMBER} -Dsonar.projectKey=${env.JOB_BASE_NAME} -Dsonar.language=js -Dsonar.sources=<location_in_workspace>/ -Dsonar.dynamicAnalysis=reuseReports -Dsonar.javascript.jstest.reportsPath=reports -Dsonar.javascript.lcov.reportPath=reports/coverage.lcov"
+      }
+    }
+    
+    stage ("wait_prior_starting_report-publish") {
+        echo 'Waiting 30 seconds prior starting publishing the report'
+        sleep 30 // seconds
+        }
+    
+    stage("Send the report"){
+        build job: 'next_triggering_job_name', 
+        parameters: [[$class: 'StringParameterValue', name: 'sonarqube_analysis_project_name', value: "${env.JOB_NAME}"],[$class: 'StringParameterValue', name: 'email_id', value: "${receipt_address}"]]
+    } 
+
+
+}
+

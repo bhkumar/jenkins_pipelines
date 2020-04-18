@@ -1,0 +1,26 @@
+node('master'){
+    
+    ansiColor('xterm') { 
+     
+         if ( "$service_name" == 'platformbackend' ){
+            stage('showing logs of platform backend') {
+                sshPublisher(publishers: [sshPublisherDesc(configName: 'frontend-platform', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'docker-compose -f /opt/docker/application/docker-compose.yml logs --tail=$lines -f  platform', execTimeout: 12000000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+         } 
+         if ( "$service_name" == 'platformfrontend' ){
+            stage('showing logs of platform frontend') {
+                sshPublisher(publishers: [sshPublisherDesc(configName: 'frontend-platform', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'docker-compose -f /opt/docker/application/docker-compose.yml logs --tail=$lines -f  frontplat', execTimeout: 12000000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+         }
+         if ( "$service_name" == 'riskbackend' ||  "$service_name" == 'eclaims' || "$service_name" == 'profession' || "$service_name" == 'sms' || "$service_name" ==  'email' || "$service_name" ==  'hplocator' || "$service_name" ==  'group' ) { 
+            stage('showing logs of microservices') {
+                sshPublisher(publishers: [sshPublisherDesc(configName: 'backend', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'docker-compose -f /opt/application-backend/docker-compose.yml logs --tail=$lines -f  $service_name', execTimeout: 12000000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])   
+            } 
+        }
+        
+         else {
+            echo 'Please select a Service Name for logs'
+        }
+    }
+}
+

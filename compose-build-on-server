@@ -1,0 +1,24 @@
+pipeline {
+    agent any 
+        
+        stages {
+
+            stage ('checkout crm')  {
+                steps {
+                    git branch: '$branch_name', credentialsId: 'devops', url: 'https://gitlab.com/code_repo_url.git'
+                }
+            }
+            
+            stage ('removing privious code from server') {
+                steps {
+                    sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'rm -rf /opt/<location>/application/dockerfiles/backend/git-pull/*', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+                }
+            }
+
+            stage ('deploying code and updating docker container') {
+                steps {
+                   sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'docker-compose -f /opt/<location>/application/docker-compose.yml --compatibility up -d --build <service_name>', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '<location>/application/dockerfiles/backend/git-pull/', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '**/*')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+                }
+            }
+    }
+}

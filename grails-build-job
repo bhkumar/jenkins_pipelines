@@ -1,0 +1,29 @@
+pipeline {
+    agent any
+
+       stages {
+                stage ('checkout SCM'){
+                     steps {
+                      git branch: '$branch_name', credentialsId: 'xxxxx', url: 'https://github.com/repo_code_url.git'
+                    } 
+                }
+                
+                stage ('performing Command and deploying build'){
+                    steps {
+                        script {
+                                sh label: '', returnStdout: true, script: 'grails  -Dgrails.env=staging  -Dgrails.work.dir="/var/lib/jenkins/jobs/<jenkins_job_name>/workspace"    war "/var/lib/jenkins/jobs/<jenkins_job_name>/workspace/ROOT.war" --non-interactive --plain-output'
+                                }
+                            }
+                        }
+                stage ('performing other operations'){
+                    steps {
+                        script {
+                                sh 'env'
+                                sh "/bin/bash -xv /var/lib/jenkins/restart_script/script >> /var/lib/jenkins/restart_script/script.log 2>&1"
+                                sh "JENKINS_NODE_COOKIE=ignore /opt/tomcat8/bin/startup.sh"
+                            }
+                        }
+                    }
+
+                }
+            }  

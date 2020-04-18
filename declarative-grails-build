@@ -1,0 +1,31 @@
+def tomcatpid = "$( ps -aux | grep tomcat8 |  awk '{print $2}' )"
+
+pipeline {
+    agent any
+
+       stages {
+                stage ('checkout SCM')
+                    steps {
+                        git branch: '$branch_name', credentialsId: 'xxxxx', url: 'https://github.com/repo_url_code.git'
+                    } 
+                stage ('performing Command and deploying build'){
+                    steps {
+                        script {
+                                 sh 'crontab -l 2> /dev/null; echo "#*/4 * * * * /bin/bash -x  /var/lib/jenkins/restart_script/script.sh >> /var/lib/jenkins/restart_script/script.log 2>&1" | crontab - ';
+                                 sh 'kill -9 $(ps aux | grep tomcat |  awk '{print $2}') 2> /dev/null || true';
+                                 sh '/opt/grails-2.3.7/bin/grails    -Dgrails.env=staging   -Dgrails.work.dir="/var/lib/jenkins/workspace/<location>"    war "/var/lib/jenkins/workspace/<jenkins_job_name>/target/ROOT.war" --non-interactive --plain-output';
+                                 sh '/<location>/tomcat8/bin/shutdown.sh';
+                                 sh 'mkdir -p /opt/jenkins/oldbuild';
+                                 sh 'cp /<location>/tomcat8/webapps/ROOT.war /opt/jenkins/oldbuild || true';
+                                 sh 'rm -rf /<location>/tomcat8/webapps/ROOT* || true';
+                                 sh 'md5sum /var/lib/jenkins/workspace/<jenkins_job_name>/target/ROOT.war';
+                                 sh 'mv "/var/lib/jenkins/workspace/<jenkins_job_name>/target/ROOT.war" /<location>/tomcat8/webapps/';
+                                 sh 'md5sum /<location>/tomcat8/webapps/ROOT.war';
+                                 sh 'BUILD_ID=dontKillMe';
+                                 sh '/<location>/tomcat8/bin/startup.sh > /dev/null 2>&1  & ';
+                                 sh 'crontab -l 2> /dev/null; echo "#*/4 * * * * /bin/bash -x  /var/lib/jenkins/restart_script/restart.sh >> /var/lib/jenkins/restart_script/script.log 2>&1" | crontab -';
+                        }
+                    }
+                }
+       }
+}

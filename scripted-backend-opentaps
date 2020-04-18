@@ -1,0 +1,42 @@
+node('master') {
+    
+             stage('Select Parameter'){
+              parameters { choice(name: 'select_branch', choices: ['<xxxxxxxx>', '<yyyyyyyy>'], description: 'select the branch ') }
+            }
+    
+            stage ('checkout crm'){ 
+                    git branch: '$select_branch', credentialsId: '<xxxxxxx>', url: 'https://github.com/repo.url'
+                }
+                
+            stage ('building code'){
+                withAnt(installation: 'ant') {
+                        dir("hot-deploy/restcomponent"){
+                          sh "ant resolve"
+                        }
+                        dir("."){
+                          sh "./ant "
+                        }
+                    }    
+                }
+                
+            stage ('stoping ofbiz'){
+                script {
+                    sh label: '', script: '''JENKINS_NODE_COOKIE=ignore ssh -i /var/jenkins_home/ssh-login.pem ubuntu@<private_ip>  /bin/sh -xv /<location>/jenkins/kill.sh '''
+                }
+            }
+            
+            stage ('Publishinig CMD SSH'){
+            sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'rm -rf /<location>/<directory>/* || true', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+            
+            stage ('publishing artifact'){
+                sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: '', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '<location>/', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '**/*')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+            
+             stage ('changing permissions'){
+                script {
+                    sh label: '', script: '''JENKINS_NODE_COOKIE=ignore ssh -i /var/jenkins_home/stage-opentaps.pem ubuntu@34.228.110.85 chmod  +x  /<location>/start.bat /<location>/start.sh /<location>/stop.sh /<location>/restart.sh /<location>/mergefromtrunk.sh /<location>/ij.ofbiz /<location>/ant
+                    JENKINS_NODE_COOKIE=ignore ssh -i /var/jenkins_home/ssh-login.pem <ssh-user>@<private_ip>  /bin/sh -xv /<location>/start.sh '''
+                }
+            }
+        }

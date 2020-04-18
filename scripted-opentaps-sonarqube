@@ -1,0 +1,37 @@
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                checkout([$class: 'GitSCM', branches: [[name: '$branch_name']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '<xxxxx>', url: 'git@github.com:repo_url']]])
+            }
+        }
+        stage('Building') {
+            agent {
+                docker {
+                image 'node'
+                args '-u 0'
+                   }
+            }
+            steps { 
+               // checkout([$class: 'GitSCM', branches: [[name: '<xxxxx>']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '<xxxxx>', url: 'git@github.com:repo_url']]])
+                sh 'cd <location>/$project && npm install && npm install -g grunt grunt-cli'
+                //sh 'npm install'
+                //sh 'npm install -g grunt grunt-cli'
+                sh 'pwd && grunt --env=development --target=build --module=$project --force'
+                sh 'cd <location>/$project_name && ls && pwd '
+            }
+        } 
+        stage ('Sonarqube'){
+            steps {
+                 script {
+                    def sonarqubeScannerHome = tool name: 'sonar-scanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+                    withCredentials([string(credentialsId: 'sonar', variable: 'sonarLogin')]) {
+                    sh 'pwd && ls'    
+                    sh "${sonarqubeScannerHome}/bin/sonar-scanner -X -Dsonar.host.url=http://xxxxxxx -Dsonar.login=${sonarLogin} -Dsonar.projectName=<project-name>-$project -Dsonar.projectVersion=${env.BUILD_NUMBER} -Dsonar.projectKey=$project -Dsonar.sources=<location>/$project/app -Dsonar.language=js sonar.inclusions=views/**,scripts/**"
+                    }
+                }
+            }   
+        }
+    }
+} 

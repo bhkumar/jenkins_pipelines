@@ -1,0 +1,33 @@
+pipeline {
+        agent any
+
+        stages {
+
+          stage ('pulling codes') {
+            steps {
+              git branch: 'development', credentialsId: 'xxxxx', url: 'https://gitlab.com/repo_url.git'
+            }
+          }
+
+          stage ('deleting old code') {
+            steps {
+              sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'rm -rf /opt/git-pull/* || true', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+        }
+
+          stage ('deploying code') {
+            steps {
+               sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'chown -R flectra:flectra /opt/git-pull/', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: 'git-pull/', remoteDirectorySDF: false, removePrefix: 'xxxxx/yyyyy/', sourceFiles: '**/*')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+        }
+
+          stage ('deploying build using script') {
+             steps {
+              script {
+                  sh label: '', script: '''JENKINS_NODE_COOKIE=ignore ssh -i /var/jenkins_home/server-login.pem root@<private_ip> /bin/bash -xv /root/jenkins-script/script'''
+                  }
+             }
+         }
+
+    }
+}

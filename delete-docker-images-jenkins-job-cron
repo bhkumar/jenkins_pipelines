@@ -1,0 +1,17 @@
+node('master'){
+    
+    ansiColor('xterm') { 
+     
+     stage('building dockerfile and deploying'){
+        sshPublisher(publishers: [sshPublisherDesc(configName: 'internal-stage', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'docker images -q -f dangling=true | xargs --no-run-if-empty docker rmi || true', execTimeout: 12000000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])   
+    
+       } 
+    }
+}
+
+
+
+
+
+
+##########   cron build periodically ---> H 9-22 * * 1-6    ## this would run 10-11 very hours from monday to sat.

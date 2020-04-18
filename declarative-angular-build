@@ -1,0 +1,34 @@
+pipeline {
+    agent any 
+      stages {
+            
+        stage ('checkout scm'){
+            steps {
+               git branch: '$branch_name' , credentialsId: 'xxxxx' , url: 'https://github.com/repo_code_url.git'
+            }   
+        }
+        
+        stage ('building application'){
+            steps {
+               sh ''' npm clean-install
+                  node_modules/@angular/cli/bin/ng build
+                  '''
+            }
+        }
+        
+        stage ('executing commands over ssh'){
+            steps {
+               sshPublisher(publishers: [sshPublisherDesc(configName: 'xxxxxxxx', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: '''rm -rf /opt/git/<location>/dist-bck
+mv /opt/git/<location>/dist /opt/git/<location>/dist-bckp''', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+        
+            }
+        }
+    
+        stage ('publishing content over ssh'){
+            steps {
+               sshPublisher(publishers: [sshPublisherDesc(configName: 'xxxx', transfers: [sshTransfer(cleanRemote: false, excludes: '*', execCommand: 'sudo nginx -s reload', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: 'git/<location>', remoteDirectorySDF: false, removePrefix: '', sourceFiles: 'dist/**')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)]) 
+        
+            }        
+        }
+    }
+}

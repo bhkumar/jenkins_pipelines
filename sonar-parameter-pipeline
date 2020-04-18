@@ -1,0 +1,35 @@
+node() {
+    try {
+    stage('Enter the parameters')        
+    properties([
+        parameters([
+            choice(name: 'sonarqube_analysis_project_name', choices: ['xxxxxxxx', 'yyyyyyyyyyy', 'zzzzzzzzzzz', 'aaaaaa' , 'bbbbbbb', 'ccccccccc'], description: 'Select a service'),
+            choice(name: 'sonarqube_server_ip', choices: ['sonarqube.company.com','IP'], description: 'Select environment (sonatcompany-com for dev, IP for stage)'),
+            string(defaultValue: 'shasha.devops26@gmail.com', description: 'Group email to send pdf report to', name: 'email_id'),
+            ]), pipelineTriggers([])
+        ])
+
+
+    stage('Record parameter and generate report'){
+        println(sonarqube_analysis_project_name)
+        command = "python /var/jenkins_home/sonar_code/generator.py " + sonarqube_server_ip + " " +  sonarqube_analysis_project_name
+        sh"$command"
+        // sh"sleep 30"
+    }
+        
+    stage("Convert to pdf"){
+        command = "python /var/jenkins_home/sonar_code/htmlToPDF.py " + sonarqube_analysis_project_name + " " + email_id
+        sh"cd /var/jenkins_home/sonar_code/pdf_reports && $command"
+        // sh"$command"
+    }
+    
+    // stage("Email pdf"){
+    //     command = "python "
+    // }
+    
+    } catch(e) {
+        throw e
+    }
+    
+}
+ 

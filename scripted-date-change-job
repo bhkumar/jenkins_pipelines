@@ -1,0 +1,12 @@
+node('master'){
+    
+    stage('selecting date'){
+       parameters([
+          string(name: 'select_time', defaultValue: '31 oct 2019 11:14:09', description: 'give the date to set', )
+        ])
+    }
+    
+    stage('removing privious artifacts'){
+        sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'sudo date -s "$select_time"', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+    }
+}

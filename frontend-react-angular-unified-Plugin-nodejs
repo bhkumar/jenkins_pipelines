@@ -1,0 +1,61 @@
+node('master'){
+    
+    stage('select the evariable to put'){
+         parameters {
+            choice(Choices: "uat", "risk", description: 'Select a Service name to build', name: 'service_name') 
+         }
+    }
+    ansiColor('xterm') {  
+    echo "$service_name"
+    if( "$service_name" == 'uat' ) {
+        stage('checkout scm'){
+            git branch: '$branch_name', credentialsId: 'devops-access', url: 'https://gitlab.com/repo_code.git'
+        }
+        
+        stage('building code within workspace'){
+            withEnv(["PATH+NodeJS=${tool 'nodejs'}/bin"]){
+                sh ''' ls -lia
+                    npm install 
+                    npm run build-stag
+                    ls -lia build'''
+                }
+            }
+
+        stage('removing privious codes'){
+            sshPublisher(publishers: [sshPublisherDesc(configName: 'frontend', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'rm -rf /opt/application-frontend/code/ms/* || true', execTimeout: 1200000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+    
+        stage('building dockerfile and deploying'){
+            sshPublisher(publishers: [sshPublisherDesc(configName: 'frontend', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'docker-compose -f /opt/application-frontend/docker-compose.yml restart', execTimeout: 120000000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: 'application-frontend/code/ms/', remoteDirectorySDF: false, removePrefix: 'build', sourceFiles: 'build/**/*')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+    }
+    
+    if( "$service_name" == 'risk' ) {
+        stage('checkout scm'){
+            git branch: '$branch_name', credentialsId: 'devops-access', url: 'https://gitlab.com/repo_code.git'
+        }
+
+        stage('building code within workspace'){
+            withEnv(["PATH+NodeJS=${tool 'nodejs'}/bin"]){
+                sh ''' cd front-end
+                ls -lia
+                npm install 
+                ./node_modules/@angular/cli/bin/ng build --configuration=stag
+                '''
+            }
+        }
+
+        stage('removing privious codes'){
+            sshPublisher(publishers: [sshPublisherDesc(configName: 'frontend', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'rm -rf /opt/application-frontend/code/risk/* || true', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+        }
+    
+        stage('building dockerfile and deploying'){
+            sshPublisher(publishers: [sshPublisherDesc(configName: 'frontend', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'docker-compose -f /opt/application-frontend/docker-compose.yml restart', execTimeout: 120000000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: 'application-frontend/code/risk/', remoteDirectorySDF: false, removePrefix: 'front-end/dist/', sourceFiles: 'front-end/dist/diagnostic/**/*')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+        }        
+            
+    }
+        else {
+            echo 'Please select a Service Name to Build'
+        }
+    }    
+}

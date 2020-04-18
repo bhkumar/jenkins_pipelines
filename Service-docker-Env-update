@@ -1,0 +1,28 @@
+node('master'){
+    
+    stage('select the evariable to put'){
+         parameters {
+            string(defaultValue: "", description: 'values to be updated as environment variables', name: 'input_variable') 
+         }
+    }
+    
+    stage('pushing variables to env file'){
+        sshPublisher(publishers: [sshPublisherDesc(configName: 'internal-dev', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'echo $input_variable >> /opt/application/environment/service.env', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+    }
+    
+    stage('choose build backend or not'){
+        parameters {
+            booleanParam(name: 'Build_ct', defaultValue: true, description: 'Input must be yes or no')
+        }
+    }
+    
+    stage("Send the report"){
+         echo "$Build_ct"
+            if ( "$Build_ct" == 'true' )  {
+                build job: 'jenkins_job_name', quietPeriod: 10
+        }
+            else { 
+              echo 'skipping building backend Job'
+         }
+    }
+}

@@ -1,0 +1,101 @@
+node('master') {
+        
+    try {
+        
+        //notify on Slack of start of build
+        // stage("Build started") {
+        //     slackSend (color: '#FFFF00', message: "STARTED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+        // }
+
+        //Initializing Variables
+        
+        def IMG_NAME = "73xxxxxxxxxxx.dkr.ecr.ap-southeast-1.amazonaws.com/service_name_as_in_ecr"
+        def BRANCH = "staging"
+        def GIT_URL = "https://github.com/repo_url/yyyy.git"
+        def ECR_CRED = "ecr:ap-southeast-1:2efffff-xxxxxx-yyyyy-122ddfrr56"
+        def ECR_URL = "https://7aaaxxxxrrrr.dkr.ecr.ap-southeast-1.amazonaws.com/service_name_as_in_ecr"
+        def PROJECT = "service_name_as_in_ecr"
+        def TASK_FAMILY = PROJECT+"-task"
+        def CLUSTER_NAME = "Frontend-Cluster"
+        def SERVICE_NAME = "Frontend-Service"
+        
+        stage('Checkout code') {
+            checkout([$class: 'GitSCM', branches: [[name: '*/'+BRANCH]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'bexxxxxxxxx-yyyyyyyyyy-ddddd', url: GIT_URL]]])
+        }
+        
+         stage('copying dockerfile'){
+             sh "cp -r /var/jenkins_home/dockerfile/frontend/* ."
+        }
+        
+        stage('Building Docker Image'){
+            docker.build(IMG_NAME)
+        }
+        
+        stage('Tagging and Pushing image to ECR'){
+            // sh "(aws ecr get-login --no-include-email --region ap-southeast-1)"
+            // withDockerRegistry(url: ECR_URL) {
+            withDockerRegistry(credentialsId: ECR_CRED, url: ECR_URL) {
+            docker.image(IMG_NAME).push('v_'+'${BUILD_NUMBER}')
+            }
+        }
+    
+        stage('Creating new task definition'){
+            sh "                                                                         \
+                sed -e 's;%BUILD_NUMBER%;${BUILD_NUMBER};g'                              \
+                /var/jenkins_home/tasks/${PROJECT}/${TASK_FAMILY}.json >                 \
+                /var/jenkins_home/tasks/${PROJECT}/${TASK_FAMILY}-v_${BUILD_NUMBER}.json \
+            "
+        }
+        
+        stage('Registering the task definition with latest revision'){
+            sh "aws ecs register-task-definition --family ${TASK_FAMILY} --cli-input-json        \
+                file:///var/jenkins_home/tasks/${PROJECT}/${TASK_FAMILY}-v_${BUILD_NUMBER}.json  \
+            "
+        }
+        
+        stage("Calculating Task Revision and Count"){
+            
+            def TASK_REVISION = sh (
+                returnStdout: true,
+                script: "                                                                                                                                                \
+                        aws ecs describe-task-definition  --task-definition '${TASK_FAMILY}' | egrep 'revision'| tr '/' ' ' | awk '{print \$2}' | cut -d ',' -f1         \
+                        "               
+            ).trim()
+            
+            echo "$TASK_REVISION"
+            
+            def DESIRED_COUNT = sh (
+                returnStdout: true,
+                script: "                                                                                                                                                               \
+                        aws ecs describe-services --cluster '${CLUSTER_NAME}' --services '${SERVICE_NAME}' | egrep -m1 'desiredCount' | tr '/' ' ' | awk '{print \$2}' | sed 's/,\$//'  \
+                        "
+            ).trim()
+            
+            if(DESIRED_COUNT == '0'){
+                echo "Desired count was found to be 0, changing it to 2"
+                echo DESIRED_COUNT
+                DESIRED_COUNT = '2'
+                echo DESIRED_COUNT
+            }
+            else{
+                echo "ELSE ME GHUS GAYA"
+            }
+            echo "Updating Service"
+            sh "aws ecs update-service --cluster '${CLUSTER_NAME}' --service '${SERVICE_NAME}' --task-definition '${TASK_FAMILY}':'${TASK_REVISION}' --desired-count '${DESIRED_COUNT}' "
+
+        }
+    
+    } catch(e) {
+        // slackSend (color: '#FF0000', message: "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+           emailext attachLog: true, body: '''$PROJECT_NAME - Build #$BUILD_NUMBER - FAILED \n Check console output at $BUILD_URL to view the results.''', subject: '$PROJECT_NAME - Build # $BUILD_NUMBER - FAILED!', to: '<email@notifier>.com'
+        echo "hey"
+        throw e
+    }
+    // stage("Build Succeed") {
+    //     slackSend (color: '#00FF00', message: "SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+    // }
+      stage("Email"){
+        emailext attachLog: true, body: '''$PROJECT_NAME - Build #$BUILD_NUMBER - $BUILD_STATUS \n Check console output at $BUILD_URL to view the results.''', subject: '$PROJECT_NAME - Build # $BUILD_NUMBER - $BUILD_STATUS!', to: 'email_for_build_status_notification'
+    }
+
+}

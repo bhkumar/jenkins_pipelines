@@ -1,0 +1,26 @@
+pipeline {
+        agent any
+
+        stages {
+
+          stage ('pulling codes') {
+            steps {
+              git branch: '$branch_name', credentialsId: '<xxxxx>', url: 'https://gitlab.com/repo_url.git'
+            }
+          }
+
+          stage ('deploying code') {
+            steps {  
+              sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'rm -rf <location>/* || true', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '<location>/', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '**/*')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+        }      
+    
+          stage ('deploying build using script') {
+            steps {
+              script {
+                  sh label: '', script: '''JENKINS_NODE_COOKIE=ignore ssh -i /var/jenkins_home/ssh-login.key ubuntu@<private_ip> -p 92 /bin/bash -xv /<location>/jenkins_script/procjenkins'''
+                 }
+            }
+        }
+    }
+}

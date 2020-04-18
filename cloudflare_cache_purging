@@ -1,0 +1,51 @@
+
+
+-------------  to get all data related to account CF
+
+curl -X GET "https://api.cloudflare.com/client/v4/zones" -H "X-Auth-Email: <email>@.com" -H "X-Auth-Key: d9dddccffesfxxxxx" -H "Content-Type: application/json"
+
+---id -- ??
+
+------------------ to update user specific data 
+
+curl -X PATCH "https://api.cloudflare.com/client/v4/user" -H "X-Auth-Email: <email>@.com" -H "X-Auth-Key: d9dddccffesfxxxxx" -H "Content-Type: application/json" --data '{"first_name":"<xxxxx>","last_name":"<yyyy>","telephone":"+91ajsjcninas","country":"IN","zipcode":"<ascascsa>"}'
+
+
+
+----------------------  to get details about all the memebers of CF account
+
+curl -X GET "https://api.cloudflare.com/client/v4/accounts/39dddddddxxxxxxxxxyyyyyyyy/members?page=1&per_page=20&direction=desc" -H "X-Auth-Email: <email>@.com" -H "X-Auth-Key: d9242xxxxxxxxyyyyyyyy" -H "Content-Type: application/json" | json_reformat
+
+
+
+
+--------------------- to get details about an specific members 
+
+curl -X GET "https://api.cloudflare.com/client/v4/accounts/39dddddddxxxxxxxxxyyyyyyyy/members/19fbxxxxxxxxyyyyyyyyyyyy" -H "X-Auth-Email: <email>@.com" -H "X-Auth-Key: d92xxxxxxxxxxxyyyyyyyyyyyyy" -H "Content-Type: application/json" | json_reformat
+
+id of users's account: 19fccccxxxxyyyy.....
+
+
+-------------------- to get subscriptions 
+
+curl -X GET "https://api.cloudflare.com/client/v4/accounts/39dddddddxxxxxxxxxyyyyyyyy/subscriptions" -H "X-Auth-Email: <email>@.com" -H "X-Auth-Key: d9dddccffesfxxxxx" -H "Content-Type: application/json" | json_reformat
+
+
+--------------------- to get details about roles
+
+curl -X GET "https://api.cloudflare.com/client/v4/accounts/39dddddddxxxxxxxxxyyyyyyyy/roles" -H "X-Auth-Email: <email>@.com" -H "X-Auth-Key: d9dddccffesfxxxxx" -H "Content-Type: application/json" | json_reformat
+
+
+
+---------------------  to purge cache for all domains under domain.global id: xxxxxxxyyyyyyyyyyzzzzzzz
+
+curl -X POST "https://api.cloudflare.com/client/v4/zones/xxxxxxyyyyyyyyyyzzzzzzzzz/purge_cache" -H "X-Auth-Email: <email>@.com" -H "X-Auth-Key: d9dddccffesfxxxxx" -H "Content-Type: application/json" --data '{"purge_everything":true}'| json_reformat
+
+
+---------------------   to check the development mode of the domain.name 
+
+curl -X GET "https://api.cloudflare.com/client/v4/zones/xxxxxxxyyyyyyyyyyzzzzzzz/settings/development_mode" -H "X-Auth-Email: <email>@.com" -H "X-Auth-Key: <email>@.com" -H "Content-Type: application/json" | json_reformat
+
+
+
+--------- Note: work on purge cache using tagging ----- cannot test hostname based and tag based caching as plan opted for is business plan not an enterprise plan. 

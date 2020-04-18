@@ -1,0 +1,95 @@
+
+
+
+def IMG_NAME = '73xxxxxxxxxx.dkr.ecr.ap-southeast-1.amazonaws.com/service_name_in_ecr'
+def ECR_CRED = 'ecr:ap-southeast-1:ecr'
+def ECR_URL = 'https://73dqwfaseesfecd00.dkr.ecr.ap-southeast-1.amazonaws.com/service_name_in_ecr'
+def TASK_FAMILY = "Task_family" 
+def CLUSTER_NAME = "Cluster-name"
+def SERVICE_NAME = "service_name_in_ecr"
+pipeline{
+    agent any
+    
+    stages{
+        stage ('Checkout Code') {
+            steps{
+                git branch: 'staging', credentialsId: 'xxxxx', url: 'url_git_repo.git'
+            }
+        }
+        stage('copying dockerfile'){
+            steps{
+                script{
+                    sh "cp -r /opt/dockerfile/BCH/* ./service_name_dir_repo/"
+                }
+            }
+        }
+        stage('Building Docker Image'){
+            steps{
+                script{
+                    docker.build(IMG_NAME," --no-cache service_name_in_ecr/")
+                }
+            }
+        }
+        stage('Tagging and Pushing image to ECR'){
+            steps{
+                script{
+                    withDockerRegistry(credentialsId: ECR_CRED, url: ECR_URL) {
+                        docker.image(IMG_NAME).push('v_'+'${BUILD_NUMBER}')
+                        docker.image(IMG_NAME).push('latest')
+                    }
+                }
+            }
+        }
+        stage('Creating new task definition'){
+            steps{
+                script{
+                    sh "                                                                         \
+                        sed -e 's;%BUILD_NUMBER%;${BUILD_NUMBER};g'                              \
+                        /opt/tasks/${JOB_NAME}/${TASK_FAMILY}.json >                 \
+                        /opt/tasks/${JOB_NAME}/${TASK_FAMILY}-v_${BUILD_NUMBER}.json \
+                    "
+                }
+            }
+        }
+        stage('Registering the task definition with latest revision'){
+            steps{
+                script{
+                    sh "aws ecs register-task-definition --family ${TASK_FAMILY} --cli-input-json     \
+                        file:///opt/tasks/${JOB_NAME}/${TASK_FAMILY}-v_${BUILD_NUMBER}.json  \
+                    "
+                }
+            }
+        }
+        stage("Calculating Task Revision and Count"){
+            steps{
+                script{
+                    def TASK_REVISION = sh (
+                        returnStdout: true,
+                        script: "                                                                                                                                                \
+                            aws ecs describe-task-definition  --task-definition '${TASK_FAMILY}' | egrep 'revision'| tr '/' ' ' | awk '{print \$2}' | cut -d ',' -f1         \
+                        "               
+                    ).trim()
+                    echo "$TASK_REVISION"
+                    def DESIRED_COUNT = sh (
+                    returnStdout: true,
+                    script: "                                                                                                                                                               \
+                        aws ecs describe-services --cluster '${CLUSTER_NAME}' --services '${SERVICE_NAME}' | egrep -m1 'desiredCount' | tr '/' ' ' | awk '{print \$2}' | sed 's/,\$//'  \
+                    "
+                    ).trim()
+            
+                    if(DESIRED_COUNT == '0'){
+                        echo "Desired count was found to be 0, changing it to 2"
+                        echo DESIRED_COUNT
+                        DESIRED_COUNT = '2'
+                        echo DESIRED_COUNT
+                    }
+                    else{
+                        echo "ELSE ME GHUS GAYA"
+                    }
+                    echo "Updating Service"
+                    sh "aws ecs update-service --cluster '${CLUSTER_NAME}' --service '${SERVICE_NAME}' --task-definition '${TASK_FAMILY}':'${TASK_REVISION}' --desired-count '${DESIRED_COUNT}' "
+                }            
+            }
+        }
+    }
+}

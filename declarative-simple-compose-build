@@ -1,0 +1,36 @@
+pipeline {
+    agent any
+        stages {
+            stage ('checkout SCM') {
+                 steps {
+                     git branch: '$branch_name', credentialsId: 'xxxxxxx', url: 'https://github.com/repo_code_url.git'
+                }         
+            }
+    
+             stage ('copying dockerfile') {
+                 steps { 
+                        sh '''
+                           cp /opt/docker/<location>/src/dockerfile/backend/Dockerfile  /var/lib/jenkins/jobs/<jenkins_job_name>/workspace/backend
+                           '''
+                    }
+                }
+             
+             stage ('publishing over ssh and performing commands') {
+                 steps {
+                     sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: ''' rm -rf /opt/docker/<location>/src/backend-bckp
+mv /opt/docker/<location>/src/backend /opt/docker/<location>/src/backend-bckp
+''', execTimeout: 12000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+                
+                     }
+                }
+             
+             stage ( 'publishing build over ssh') {
+                 steps {
+                     sshPublisher(publishers: [sshPublisherDesc(configName: '<xxxxx>', transfers: [sshTransfer(cleanRemote: false, excludes: 'frontend', execCommand: 'docker-compose -f /opt/docker/<location>/docker-compose.yaml up -d --build <service_name>', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: 'docker/<location>/src', remoteDirectorySDF: false, removePrefix: '', sourceFiles: 'backend/**')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            
+            }
+        }
+            
+    }
+
+}
